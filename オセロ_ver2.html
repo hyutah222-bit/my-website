@@ -1,62 +1,187 @@
-<style>
-  body {
-    font-family: sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 0;
-    background-color: #f5f5f5;
-  }
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ユウタ vs チエ オセロ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
 
-  h1 {
-    font-size: 28px;
-    margin: 20px 0;
-  }
+    h1 {
+      font-size: 28px;
+      margin: 20px 0;
+    }
 
-  #startBtn {
-    padding: 12px 24px;
-    font-size: 20px;
-    margin: 20px auto;
-    display: block;
-  }
+    #startBtn {
+      padding: 12px 24px;
+      font-size: 20px;
+      margin: 20px auto;
+      display: block;
+    }
 
-  #tossResult, #turn {
-    font-size: 20px;
-    margin: 10px;
-  }
+    #tossResult, #turn {
+      font-size: 20px;
+      margin: 10px;
+    }
 
-  table {
-    margin: auto;
-    border-collapse: collapse;
-    display: none;
-    touch-action: manipulation;
-  }
+    table {
+      margin: auto;
+      border-collapse: collapse;
+      display: none;
+      touch-action: manipulation;
+    }
 
-  td {
-    width: 48px;
-    height: 48px;
-    border: 1px solid #333;
-    background-color: green;
-    position: relative;
-    cursor: pointer;
-  }
+    td {
+      width: 48px;
+      height: 48px;
+      border: 1px solid #333;
+      background-color: green;
+      position: relative;
+      cursor: pointer;
+    }
 
-  .stone {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    position: absolute;
-    top: 5px;
-    left: 5px;
-  }
+    .stone {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      position: absolute;
+      top: 5px;
+      left: 5px;
+    }
 
-  .black { background-color: black; }
-  .white { background-color: white; }
+    .black { background-color: black; }
+    .white { background-color: white; }
 
-  @media (max-width: 480px) {
-    h1 { font-size: 22px; }
-    #startBtn { font-size: 18px; padding: 10px 20px; }
-    #tossResult, #turn { font-size: 18px; }
-    td { width: 42px; height: 42px; }
-    .stone { width: 34px; height: 34px; top: 4px; left: 4px; }
-  }
-</style>
+    @media (max-width: 480px) {
+      h1 { font-size: 22px; }
+      #startBtn { font-size: 18px; padding: 10px 20px; }
+      #tossResult, #turn { font-size: 18px; }
+      td { width: 42px; height: 42px; }
+      .stone { width: 34px; height: 34px; top: 4px; left: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>ユウタ vs チエ オセロ</h1>
+  <button id="startBtn">ゲームを始める</button>
+  <div id="tossResult"></div>
+  <div id="turn"></div>
+  <table id="board"></table>
+
+  <script>
+    const SIZE = 8;
+    const board = [];
+    const table = document.getElementById("board");
+    const turnDisplay = document.getElementById("turn");
+    const tossResult = document.getElementById("tossResult");
+    const startBtn = document.getElementById("startBtn");
+
+    const players = {
+      black: "ユウタ",
+      white: "チエ"
+    };
+
+    let current;
+
+    startBtn.onclick = () => {
+      startBtn.style.display = "none";
+      tossResult.textContent = "コイントス中...";
+      let tossCount = 0;
+      const tossInterval = setInterval(() => {
+        tossResult.textContent = tossCount % 2 === 0 ? "ユウタ！" : "チエ！";
+        tossCount++;
+        if (tossCount > 6) {
+          clearInterval(tossInterval);
+          current = Math.random() < 0.5 ? "black" : "white";
+          tossResult.textContent = `先攻は ${players[current]}（${current === "black" ? "黒" : "白"}）！`;
+          setTimeout(startGame, 1500);
+        }
+      }, 500);
+    };
+
+    function startGame() {
+      table.style.display = "table";
+      for (let y = 0; y < SIZE; y++) {
+        board[y] = [];
+        const row = table.insertRow();
+        for (let x = 0; x < SIZE; x++) {
+          board[y][x] = "";
+          const cell = row.insertCell();
+          cell.dataset.x = x;
+          cell.dataset.y = y;
+          cell.onclick = () => placeStone(x, y);
+        }
+      }
+
+      board[3][3] = "white";
+      board[3][4] = "black";
+      board[4][3] = "black";
+      board[4][4] = "white";
+      render();
+      updateTurnDisplay();
+    }
+
+    function placeStone(x, y) {
+      if (board[y][x] !== "") return;
+      const flipped = getFlippable(x, y, current);
+      if (flipped.length === 0) return;
+
+      board[y][x] = current;
+      flipped.forEach(([fx, fy]) => board[fy][fx] = current);
+      current = current === "black" ? "white" : "black";
+      updateTurnDisplay();
+      render();
+    }
+
+    function getFlippable(x, y, color) {
+      const opponent = color === "black" ? "white" : "black";
+      const directions = [
+        [0,1],[1,0],[0,-1],[-1,0],
+        [1,1],[1,-1],[-1,1],[-1,-1]
+      ];
+      const result = [];
+
+      for (const [dx, dy] of directions) {
+        let nx = x + dx, ny = y + dy;
+        const temp = [];
+        while (nx >= 0 && ny >= 0 && nx < SIZE && ny < SIZE) {
+          if (board[ny][nx] === opponent) {
+            temp.push([nx, ny]);
+          } else if (board[ny][nx] === color) {
+            result.push(...temp);
+            break;
+          } else {
+            break;
+          }
+          nx += dx;
+          ny += dy;
+        }
+      }
+      return result;
+    }
+
+    function render() {
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          const cell = table.rows[y].cells[x];
+          cell.innerHTML = "";
+          if (board[y][x]) {
+            const stone = document.createElement("div");
+            stone.className = `stone ${board[y][x]}`;
+            cell.appendChild(stone);
+          }
+        }
+      }
+    }
+
+    function updateTurnDisplay() {
+      turnDisplay.textContent = `${players[current]}（${current === "black" ? "黒" : "白"}）の番です`;
+    }
+  </script>
+</body>
+</html>
