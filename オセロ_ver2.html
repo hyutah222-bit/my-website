@@ -403,12 +403,13 @@
 
         // リセットボタンのイベントリスナー
         resetButton.addEventListener('click', () => {
-            // ゲームボードとメッセージを非表示にし、ルーレットボタンを再表示
+            // ゲームボードを非表示にし、ルーレットボタンを再表示
             boardElement.classList.add('hidden');
             messageElement.classList.add('hidden');
             resetButton.classList.add('hidden');
             startButton.classList.remove('hidden');
             spinnerSection.innerHTML = '';
+            isGameOver = false;
         });
 
         // スタートボタンのイベントリスナー
