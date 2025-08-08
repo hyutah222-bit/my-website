@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            color: #334155;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #1e293b;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 45px);
+            grid-template-rows: repeat(8, 45px);
+            gap: 2px;
+            background-color: #16a34a;
+            border: 4px solid #16a34a;
+            border-radius: 0.5rem;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .cell {
+            width: 45px;
+            height: 45px;
+            background-color: #15803d;
+            border-radius: 0.25rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            background-color: #16a34a;
+        }
+
+        .piece {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+        
+        .piece.black {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        .piece.white {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        #message {
+            margin-top: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            min-height: 2rem;
+            text-align: center;
+            transition: color 0.3s ease;
+        }
+        
+        #message.black-turn {
+            color: #1f2937;
+        }
+
+        #message.white-turn {
+            color: #f9a8d4;
+            text-shadow: 1px 1px 2px #334155;
+        }
+
+        #reset-button, #start-button {
+            margin-top: 1.5rem;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: #3b82f6;
+            border: none;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #reset-button:hover, #start-button:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .spinner-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin-bottom: 2rem;
+        }
+
+        .spinner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 10px solid #cbd5e1;
+            border-top-color: #1f2937;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>オセロ</h1>
+        <div id="spinner-section">
+            <button id="start-button">先攻・後攻を決める</button>
+        </div>
+        <div id="board" class="hidden"></div>
+        <div id="message" class="black-turn hidden"></div>
+        <button id="reset-button" class="hidden">リセット</button>
+    </div>
+
+    <script>
+        // ゲームの定数を定義
+        const BOARD_SIZE = 8;
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+
+        const PLAYERS = {
+            [BLACK]: 'ユウタ',
+            [WHITE]: 'チエ'
+        };
+
+        // DOM要素を取得
+        const boardElement = document.getElementById('board');
+        const messageElement = document.getElementById('message');
+        const resetButton = document.getElementById('reset-button');
+        const startButton = document.getElementById('start-button');
+        const spinnerSection = document.getElementById('spinner-section');
+
+        let board;
+        let currentPlayer;
+        let isGameOver = false;
+
+        // ゲームを初期化
+        function init() {
+            isGameOver = false;
+            // ボードを初期化（8x8の配列）
+            board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+            
+            // 中央の4つの駒を配置
+            const center = BOARD_SIZE / 2 - 1;
+            board[center][center] = WHITE;
+            board[center][center + 1] = BLACK;
+            board[center + 1][center] = BLACK;
+            board[center + 1][center + 1] = WHITE;
+
+            updateMessage();
+
+            // ゲーム要素を表示
+            boardElement.classList.remove('hidden');
+            messageElement.classList.remove('hidden');
+            resetButton.classList.remove('hidden');
+            startButton.classList.add('hidden');
+            spinnerSection.innerHTML = ''; // ルーレットを非表示
+            renderBoard();
+        }
+
+        // ボードをHTMLに描画
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    if (board[r][c] !== EMPTY) {
+                        const piece = document.createElement('div');
+                        piece.className = `piece ${board[r][c] === BLACK ? 'black' : 'white'}`;
+                        cell.appendChild(piece);
+                    }
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // メッセージを更新
+        function updateMessage(gameOverMessage = null) {
+            if (gameOverMessage) {
+                messageElement.textContent = gameOverMessage;
+                messageElement.className = 'text-center text-xl font-bold';
+            } else {
+                const currentPlayerName = PLAYERS[currentPlayer];
+                messageElement.textContent = `${currentPlayerName}のターンです`;
+                messageElement.className = `text-center text-xl font-bold ${currentPlayer === BLACK ? 'black-turn' : 'white-turn'}`;
+            }
+        }
+
+        // 有効な手があるかチェック
+        function hasValidMoves(player) {
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === EMPTY && checkValidMove(r, c, player)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // ゲームオーバーをチェック
+        function checkForGameOver() {
+            const hasBlackMoves = hasValidMoves(BLACK);
+            const hasWhiteMoves = hasValidMoves(WHITE);
+
+            if (!hasBlackMoves && !hasWhiteMoves) {
+                isGameOver = true;
+                const blackScore = board.flat().filter(p => p === BLACK).length;
+                const whiteScore = board.flat().filter(p => p === WHITE).length;
+
+                let winnerMessage;
+                if (blackScore > whiteScore) {
+                    winnerMessage = `ゲーム終了！ユウタの勝利 (${blackScore} vs ${whiteScore})`;
+                } else if (whiteScore > blackScore) {
+                    winnerMessage = `ゲーム終了！チエの勝利 (${whiteScore} vs ${blackScore})`;
+                } else {
+                    winnerMessage = `ゲーム終了！引き分けです (${blackScore} vs ${whiteScore})`;
+                }
+                updateMessage(winnerMessage);
+                return true;
+            } else if (!hasValidMoves(currentPlayer)) {
+                // 駒を置く場所がなければ、ターンをスキップ
+                const skipMessage = `${PLAYERS[currentPlayer]}は駒を置く場所がないため、ターンをスキップします。`;
+                showCustomMessage(skipMessage);
+                switchPlayer();
+                updateMessage();
+                return false;
+            }
+            return false;
+        }
+        
+        // 有効な手をチェック（駒をひっくり返せるか）
+        function checkValidMove(row, col, player) {
+            if (board[row][col] !== EMPTY) {
+                return false;
+            }
+
+            const opponent = player === BLACK ? WHITE : BLACK;
+
+            // 全8方向をチェック
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+
+                    let r = row + dr;
+                    let c = col + dc;
+                    let piecesToFlip = [];
+
+                    // 相手の駒を挟んでいけるか確認
+                    while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === opponent) {
+                        piecesToFlip.push({r, c});
+                        r += dr;
+                        c += dc;
+                    }
+
+                    // 自分の駒で挟めているか確認
+                    if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player && piecesToFlip.length > 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 駒をひっくり返す
+        function flipPieces(row, col, player) {
+            const opponent = player === BLACK ? WHITE : BLACK;
+            
+            // 全8方向をチェックしてひっくり返す
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+
+                    let r = row + dr;
+                    let c = col + dc;
+                    let piecesToFlip = [];
+
+                    while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === opponent) {
+                        piecesToFlip.push({r, c});
+                        r += dr;
+                        c += dc;
+                    }
+
+                    if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player && piecesToFlip.length > 0) {
+                        piecesToFlip.forEach(piece => {
+                            board[piece.r][piece.c] = player;
+                        });
+                    }
+                }
+            }
+        }
+
+        // プレイヤーを交代
+        function switchPlayer() {
+            currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
+        }
+
+        // カスタムメッセージボックスを表示する関数
+        function showCustomMessage(message, duration = 1500, backgroundColor = '#ef4444') {
+            const customAlert = document.createElement('div');
+            customAlert.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background-color: ${backgroundColor}; color: white; padding: 1rem 2rem; border-radius: 0.5rem;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); z-index: 1000;
+                font-size: 1.25rem; font-weight: bold;
+            `;
+            customAlert.textContent = message;
+            document.body.appendChild(customAlert);
+            setTimeout(() => {
+                customAlert.remove();
+            }, duration);
+        }
+
+        // クリックイベントのハンドラ
+        boardElement.addEventListener('click', (event) => {
+            if (isGameOver) return;
+
+            const cell = event.target.closest('.cell');
+            if (!cell) return;
+
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+
+            try {
+                if (checkValidMove(row, col, currentPlayer)) {
+                    board[row][col] = currentPlayer;
+                    flipPieces(row, col, currentPlayer);
+                    renderBoard(); // 駒をひっくり返した後、ボードを再描画
+                    switchPlayer();
+                    if (!checkForGameOver()) {
+                        updateMessage();
+                    }
+                } else {
+                    showCustomMessage('そこには置けません');
+                }
+            } catch (error) {
+                console.error("Error during game play:", error);
+                showCustomMessage('エラーが発生しました。リセットしてください。', 3000, '#eab308');
+            }
+        });
+
+        // リセットボタンのイベントリスナー
+        resetButton.addEventListener('click', () => {
+            // ゲームボードとメッセージを非表示にし、ルーレットボタンを再表示
+            boardElement.classList.add('hidden');
+            messageElement.classList.add('hidden');
+            resetButton.classList.add('hidden');
+            startButton.classList.remove('hidden');
+            spinnerSection.innerHTML = '';
+        });
+
+        // スタートボタンのイベントリスナー
+        startButton.addEventListener('click', () => {
+            startButton.classList.add('hidden');
+            spinnerSection.innerHTML = `<div class="spinner-container"><div class="spinner"></div><div class="spinner-text">回転中...</div></div>`;
+
+            // ルーレットの時間を調整して、ルーレットが回っているように見せる
+            const spinDuration = 3000;
+            const winner = Math.random() < 0.5 ? BLACK : WHITE;
+
+            setTimeout(() => {
+                currentPlayer = winner;
+                spinnerSection.innerHTML = '';
+                showCustomMessage(`${PLAYERS[winner]}が先攻です！`, 2000, '#10b981');
+
+                setTimeout(() => {
+                    init();
+                }, 2000);
+            }, spinDuration);
+        });
+
+        // ページ読み込み時の処理
+        window.onload = () => {
+            // 初回表示時にはゲームボードを隠しておく
+            boardElement.classList.add('hidden');
+            messageElement.classList.add('hidden');
+            resetButton.classList.add('hidden');
+            startButton.classList.remove('hidden');
+        };
+    </script>
+</body>
+</html>
