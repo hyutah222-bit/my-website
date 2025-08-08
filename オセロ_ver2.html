@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>オセロゲーム</title>
+    <title>おしゃれなオセロゲーム</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
@@ -191,7 +191,7 @@
 </head>
 <body>
     <div id="game-container">
-        <h1>オセロ</h1>
+        <h1>おしゃれなオセロ</h1>
         <div id="spinner-section">
             <button id="start-button">先攻・後攻を決める</button>
         </div>
@@ -243,7 +243,7 @@
             messageElement.classList.remove('hidden');
             resetButton.classList.remove('hidden');
             startButton.classList.add('hidden');
-            spinnerSection.innerHTML = ''; // ルーレットを非表示
+            spinnerSection.classList.add('hidden'); // ルーレットセクションを非表示
             renderBoard();
         }
 
@@ -436,6 +436,8 @@
             boardElement.classList.add('hidden');
             messageElement.classList.add('hidden');
             resetButton.classList.add('hidden');
+
+            spinnerSection.classList.remove('hidden');
             startButton.classList.remove('hidden');
             spinnerSection.innerHTML = '';
         }
@@ -446,6 +448,7 @@
         // スタートボタンのイベントリスナー
         startButton.addEventListener('click', () => {
             startButton.classList.add('hidden');
+            spinnerSection.classList.remove('hidden');
             spinnerSection.innerHTML = `<div class="spinner-container"><div class="spinner"></div><div class="spinner-text">回転中...</div></div>`;
 
             // ルーレットの時間を調整して、ルーレットが回っているように見せる
